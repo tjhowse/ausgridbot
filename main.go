@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
+	"time"
+
+	"github.com/caarlos0/env/v9"
 )
 
 type config struct {
@@ -25,5 +29,9 @@ func main() {
 	cfg := config{}
 	if err := env.Parse(&cfg); err != nil {
 		fmt.Printf("%+v\n", err)
+	}
+	for {
+		slog.Error("Hi!")
+		time.Sleep(1 * time.Second)
 	}
 }
