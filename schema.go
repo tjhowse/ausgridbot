@@ -15,7 +15,7 @@ func (ct *JSONTime) UnmarshalJSON(b []byte) error {
 
 	// Annoyingly this timestamp doesn't include any time zone information.
 	// We're going to have to learn the timezone based on the region?
-	// Bleh, then I need to track start/end of timezones for each region.
+	// Bleh, then I need to track start/end of DST for each region.
 	// This sucks.
 
 	date, err := time.Parse("\"2006-01-02T15:04:05\"", string(b))

@@ -14,7 +14,7 @@ type config struct {
 	MastodonClientSecret string `env:"MASTODON_CLIENT_SECRET"`
 	MastodonUserEmail    string `env:"MASTODON_USER_EMAIL"`
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
-	MastodonTootInterval int64  `env:"MASTODON_TOOT_INTERVAL" envDefault:"1800"`
+	MastodonTootInterval int64  `env:"MASTODON_TOOT_INTERVAL" envDefault:"1"`
 	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
 }
 
@@ -25,9 +25,16 @@ func main() {
 	}
 
 	aemo := NewAEMO()
-	var m *Mastodon
 
-	nextTootTime := time.Now().Add(-time.Second)
+	// This is a map of regions to the GridBot handling that region.
+	regionBots := make(map[string]*GridBot)
+
+	regionBots["QLD1"] = NewGridBot(cfg, "Queensland")
+
+	// Start the main loop for each GridBot
+	for _, gb := range regionBots {
+		go gb.Mainloop()
+	}
 
 	slog.Info("Starting up")
 	for {
@@ -37,28 +44,15 @@ func main() {
 			slog.Error("failed to get data from AEMO:", err)
 		}
 		slog.Info("Got data")
-		print(aemoData.Intervals[0].RegionID)
-		if time.Now().After(nextTootTime) {
-			// Calculate the next toot time.
-			nextTootTime = nextTootTime.Add(time.Duration(cfg.MastodonTootInterval) * time.Second)
+		// print(aemoData.Intervals[0].RegionID)
 
-			// If the mastodon link is down, bring it back up.
-			if m == nil && !cfg.TestMode {
-				m, err = NewMastodon(cfg.MastodonURL, cfg.MastodonClientID, cfg.MastodonClientSecret)
-				if err != nil {
-					slog.Error("Failed to connect to mastodon: " + err.Error())
-					time.Sleep(10 * time.Second)
-					continue
-				}
-			}
-
-			err = m.PostStatus("Tap tap. This thing on?")
-			if err != nil {
-				slog.Error(err.Error())
-				m = nil
+		for _, i := range aemoData.Intervals {
+			// Send the interval to the appropriate GridBot
+			if gb, ok := regionBots[i.RegionID]; ok {
+				gb.GetChannel() <- i
 			}
 		}
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
