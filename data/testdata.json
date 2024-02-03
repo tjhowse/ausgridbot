@@ -1,0 +1,26 @@
+{
+    "5MIN": [
+        {
+            "SETTLEMENTDATE": "2024-01-30T16:35:00",
+            "REGIONID": "NSW1",
+            "REGION": "NSW1",
+            "RRP": 91.71848,
+            "TOTALDEMAND": 10319.54000,
+            "PERIODTYPE": "ACTUAL",
+            "NETINTERCHANGE": -29.42000,
+            "SCHEDULEDGENERATION": 7575.05094,
+            "SEMISCHEDULEDGENERATION": 2711.97906
+        },
+        {
+            "SETTLEMENTDATE": "2024-01-30T16:40:00",
+            "REGIONID": "NSW1",
+            "REGION": "NSW1",
+            "RRP": 88.00000,
+            "TOTALDEMAND": 10286.60000,
+            "PERIODTYPE": "ACTUAL",
+            "NETINTERCHANGE": -1.73000,
+            "SCHEDULEDGENERATION": 7600.48114,
+            "SEMISCHEDULEDGENERATION": 2681.33886
+        }
+    ]
+}
