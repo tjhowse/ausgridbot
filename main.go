@@ -30,8 +30,18 @@ func main() {
 	if err := env.Parse(&cfg); err != nil {
 		fmt.Printf("%+v\n", err)
 	}
+
+	aemo := NewAEMO()
+
+	slog.Info("Starting up")
 	for {
-		slog.Error("Hi!")
-		time.Sleep(1 * time.Second)
+		slog.Info("Getting data")
+		aemoData, err := aemo.GetAEMOData("")
+		if err != nil {
+			slog.Error("failed to get data from AEMO:", err)
+		}
+		slog.Info("Got data")
+		print(aemoData.Intervals[0].RegionID)
+		time.Sleep(10 * time.Second)
 	}
 }
