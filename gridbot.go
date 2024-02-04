@@ -12,7 +12,7 @@ const INTERESTING_PEAK_RRP = 500
 // This amounts to 5 cents /kWh
 const UNINTERESTING_DELTA_RRP = 50
 const PEAK_TOOT_FORMAT = "A new %s wholesale electricity price peak of $%.2f/kWh is predicted at %s: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
-const PEAK_DOWNGRADE_TOOT_FORMAT = "The %s predicted wholesale electricity price peak of $%.2f/kWh been downgraded to a peak of $%.2f/kWh at %s has: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
+const PEAK_DOWNGRADE_TOOT_FORMAT = "The %s predicted wholesale electricity price peak of $%.2f/kWh has been downgraded to a peak of $%.2f/kWh at %s: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 const PEAK_CANCELLED_TOOT_FORMAT = "The %s wholesale electricity price peak of $%.2f/kWh at %s has been averted. Thanks AEMO! https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 
 type GridBot struct {
