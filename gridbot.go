@@ -16,7 +16,6 @@ type GridBot struct {
 	input              chan Interval
 	cfg                config
 	regionString       string
-	intervalBuffer     []Interval
 	lastTootedPeakRRP  float64
 	lastTootedPeakTime time.Time
 	lastToot           string
@@ -33,8 +32,7 @@ func NewGridBot(cfg config, regionString string) *GridBot {
 	gb := &GridBot{}
 	gb.cfg = cfg
 	gb.regionString = regionString
-	gb.resetIntervalBuffer()
-	gb.peakRRP = -1000
+	gb.resetIntervalChannel()
 	return gb
 }
 
@@ -42,23 +40,24 @@ func (gb *GridBot) GetIntervalChannel() chan Interval {
 	return gb.input
 }
 
-func (gb *GridBot) resetIntervalBuffer() {
-	gb.intervalBuffer = make([]Interval, 0, 1000)
+func (gb *GridBot) resetIntervalChannel() {
 	gb.input = make(chan Interval)
+	gb.peakRRP = -20000
 }
 
 func (gb *GridBot) Mainloop() {
 	for {
 
 		for i := range gb.input {
-			gb.ProcessInterval(i)
+			gb.processInterval(i)
+			slog.Debug("Processed interval", "rrp", i.RRP, "time", i.SettlementDate.Time)
 		}
-		gb.ConsiderPostingToot()
-		gb.resetIntervalBuffer()
+		gb.considerPostingToot()
+		gb.resetIntervalChannel()
 	}
 }
 
-func (gb *GridBot) ConsiderPostingToot() {
+func (gb *GridBot) considerPostingToot() {
 	var err error
 
 	// We've already tooted about this peak.
@@ -97,12 +96,12 @@ func (gb *GridBot) ConsiderPostingToot() {
 			return
 		}
 	}
-	gb.lastToot = toot
 	gb.lastTootedPeakRRP = gb.peakRRP
 	gb.lastTootedPeakTime = gb.peakTime
+	gb.lastToot = toot
 }
 
-func (gb *GridBot) ProcessInterval(i Interval) {
+func (gb *GridBot) processInterval(i Interval) {
 	// Ignore data that isn't a forecast
 	if i.PeriodType != "FORECAST" {
 		return
@@ -112,17 +111,8 @@ func (gb *GridBot) ProcessInterval(i Interval) {
 		return
 	}
 
-	// If this is the first interval we've received after a reset,
-	// reset the peak values.
-	if len(gb.intervalBuffer) == 0 {
-		gb.peakRRP = i.RRP
-		gb.peakTime = i.SettlementDate.Time
-	} else if i.RRP > gb.peakRRP {
+	if i.RRP > gb.peakRRP {
 		gb.peakRRP = i.RRP
 		gb.peakTime = i.SettlementDate.Time
 	}
-
-	fmt.Println("Adding to intervalbuffer")
-
-	gb.intervalBuffer = append(gb.intervalBuffer, i)
 }

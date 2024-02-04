@@ -89,14 +89,6 @@ func TestGetAEMOData(t *testing.T) {
 
 func ValidateToot(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, expectedToot string, t *testing.T) {
 
-	if want, got := intervalRRP, gridBot.peakRRP; !FloatEquals(want, got) {
-		t.Errorf("Expected %f, got %f", want, got)
-	}
-
-	if want, got := intervalTime, gridBot.peakTime; !want.Equal(got) {
-		t.Errorf("Expected %s, got %s", want, got)
-	}
-
 	if want, got := intervalRRP, gridBot.lastTootedPeakRRP; !FloatEquals(want, got) {
 		t.Errorf("Expected %f, got %f", want, got)
 	}
@@ -166,7 +158,6 @@ func TestGidBotBasicInterval(t *testing.T) {
 
 	peakTime := time.Now().Add(1 * time.Hour)
 	peakRRP := float64(301)
-
 	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
@@ -189,21 +180,16 @@ func TestGidBotBasicPeak(t *testing.T) {
 	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
 	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
 	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
-	if want, got := 3, len(gridBot.intervalBuffer); want != got {
-		t.Errorf("Expected %d, got %d", want, got)
-	}
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
 
+	gridBot.lastToot = ""
 	oldPeak := peakRRP
 	// Cancel the peak
 	peakRRP = float64(INTERESTING_PEAK_RRP - 1)
 	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
 	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
 	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
-	if want, got := 3, len(gridBot.intervalBuffer); want != got {
-		t.Errorf("Expected %d, got %d", want, got)
-	}
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(oldPeak, peakTime, "Queensland", false), t)
 
