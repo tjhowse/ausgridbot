@@ -8,6 +8,9 @@ import (
 )
 
 const INTERESTING_PEAK_RRP = 300
+
+// This amounts to 5 cents /kWh
+const UNINTERESTING_DELTA_RRP = 50
 const PEAK_TOOT_FORMAT = "A new %s wholesale electricity price peak of $%.2f/kWh is predicted at %s: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 const PEAK_DOWNGRADE_TOOT_FORMAT = "The %s predicted wholesale electricity price peak of $%.2f/kWh been downgraded to a peak of $%.2f/kWh at %s has: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 const PEAK_CANCELLED_TOOT_FORMAT = "The %s wholesale electricity price peak of $%.2f/kWh at %s has been averted. Thanks AEMO! https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
@@ -63,6 +66,11 @@ func (gb *GridBot) considerPostingToot() {
 
 	// We've already tooted about this peak.
 	if FloatEquals(gb.lastTootedPeakRRP, gb.peakRRP) && gb.lastTootedPeakTime.Equal(gb.peakTime) {
+		return
+	}
+
+	// If the change in peak RRP is uninterestingly small, ignore it.
+	if math.Abs(gb.peakRRP-gb.lastTootedPeakRRP) < UNINTERESTING_DELTA_RRP && gb.lastTootedPeakTime.Equal(gb.peakTime) {
 		return
 	}
 

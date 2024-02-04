@@ -225,4 +225,17 @@ func TestGidBotBasicPeak(t *testing.T) {
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", oldPeak, DOWNGRADE), t)
 
+	// Marginally larger peak, should be ignored.
+	peakRRP = float64(INTERESTING_PEAK_RRP*2 + 10)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+
+	// Can't use the ValidateToot helper here, since it waits for the lastToot to be != "", but that's
+	// exactly what we want in this case. Just close off the channel and wait a second.
+	close(gridBot.GetIntervalChannel())
+	time.Sleep(1 * time.Second)
+	if want, got := "", gridBot.lastToot; want != got {
+		t.Errorf("Expected no toot, got %s", got)
+	}
 }
