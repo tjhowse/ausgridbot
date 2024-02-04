@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -65,6 +66,7 @@ func (aemo *AEMO) GetAEMOData(HostUrl string) (AEMOData, error) {
 		return AEMOData{}, err
 	}
 
+	// If the response is gzipped, decompress it
 	if POSTResp.Header.Get("Content-Encoding") == "gzip" {
 		var r io.Reader
 		if r, err = gzip.NewReader(bytes.NewReader(RESPBody)); err != nil {
@@ -79,6 +81,22 @@ func (aemo *AEMO) GetAEMOData(HostUrl string) (AEMOData, error) {
 	var decoded AEMOData
 	if err = json.Unmarshal(RESPBody, &decoded); err != nil {
 		return AEMOData{}, err
+	}
+
+	// Validate the parsed data
+	for _, interval := range decoded.Intervals {
+		if err = interval.Validate(); err != nil {
+			return AEMOData{}, err
+		}
+	}
+
+	// Write the validated data to a file
+
+	if f, err := os.Create("data/livedata.json"); err == nil {
+		defer f.Close()
+		enc := json.NewEncoder(f)
+		enc.SetIndent("", "  ")
+		enc.Encode(decoded)
 	}
 
 	// Return the AEMOData structure

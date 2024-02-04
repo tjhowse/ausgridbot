@@ -15,7 +15,7 @@ type config struct {
 	MastodonUserEmail    string `env:"MASTODON_USER_EMAIL"`
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
 	MastodonTootInterval int64  `env:"MASTODON_TOOT_INTERVAL" envDefault:"1"`
-	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
+	TestMode             bool   `env:"TEST_MODE" envDefault:"true"`
 }
 
 func main() {
@@ -27,12 +27,12 @@ func main() {
 	aemo := NewAEMO()
 
 	// This is a map of regions to the GridBot handling that region.
-	regionBots := make(map[string]*GridBot)
+	gridBots := make(map[string]*GridBot)
 
-	regionBots["QLD1"] = NewGridBot(cfg, "Queensland")
+	gridBots["QLD1"] = NewGridBot(cfg, "Queensland")
 
 	// Start the main loop for each GridBot
-	for _, gb := range regionBots {
+	for _, gb := range gridBots {
 		go gb.Mainloop()
 	}
 
@@ -48,9 +48,14 @@ func main() {
 
 		for _, i := range aemoData.Intervals {
 			// Send the interval to the appropriate GridBot
-			if gb, ok := regionBots[i.RegionID]; ok {
-				gb.GetChannel() <- i
+			if gb, ok := gridBots[i.RegionID]; ok {
+				gb.GetIntervalChannel() <- i
 			}
+		}
+
+		// Kick off processing for each GridBot
+		for _, gb := range gridBots {
+			close(gb.GetIntervalChannel())
 		}
 
 		time.Sleep(30 * time.Second)

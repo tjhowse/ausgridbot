@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type AEMOData struct {
 	Intervals []Interval `json:"5MIN"`
@@ -18,7 +21,13 @@ func (ct *JSONTime) UnmarshalJSON(b []byte) error {
 	// Bleh, then I need to track start/end of DST for each region.
 	// This sucks.
 
-	date, err := time.Parse("\"2006-01-02T15:04:05\"", string(b))
+	// For now assume everything's in Brisbane time, I.E. UTC+10
+	brisbaneLocation, err := time.LoadLocation("Australia/Brisbane")
+	if err != nil {
+		return err
+	}
+
+	date, err := time.ParseInLocation("\"2006-01-02T15:04:05\"", string(b), brisbaneLocation)
 	if err != nil {
 		return err
 	}
@@ -31,9 +40,32 @@ type Interval struct {
 	RegionID                string   `json:"REGIONID"`
 	Region                  string   `json:"REGION"`
 	RRP                     float64  `json:"RRP"`
-	TotalDeman              float64  `json:"TOTALDEMAND"`
+	TotalDemand             float64  `json:"TOTALDEMAND"`
 	PeriodType              string   `json:"PERIODTYPE"`
 	NetInterchange          float64  `json:"NETINTERCHANGE"`
 	ScheduledGeneration     float64  `json:"SCHEDULEDGENERATION"`
 	SemiScheduledGeneration float64  `json:"SEMISCHEDULEDGENERATION"`
+}
+
+func (i *Interval) Validate() error {
+	// Validate the Interval struct
+
+	if i.PeriodType != "FORECAST" &&
+		i.PeriodType != "ACTUAL" {
+		return fmt.Errorf("PeriodType must be 'FORECAST' or 'ACTUAL'")
+	}
+
+	if i.RegionID != "NSW1" &&
+		i.RegionID != "QLD1" &&
+		i.RegionID != "SA1" &&
+		i.RegionID != "TAS1" &&
+		i.RegionID != "VIC1" {
+		return fmt.Errorf("RegionID must be 'NSW1', 'QLD1', 'SA1', 'TAS1', or 'VIC1'")
+	}
+
+	if i.Region != i.RegionID {
+		return fmt.Errorf("RegionID must match Region")
+	}
+
+	return nil
 }

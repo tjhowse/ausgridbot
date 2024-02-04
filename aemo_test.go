@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDeserialiseJson(t *testing.T) {
@@ -30,8 +32,8 @@ func TestDeserialiseJson(t *testing.T) {
 		t.Fatal("Data didn't deserialise properly")
 	}
 
-	if aemoData.Intervals[0].SettlementDate.String() != "2024-01-30 16:35:00 +0000 UTC" {
-		t.Fatal("Data didn't deserialise properly")
+	if aemoData.Intervals[0].SettlementDate.String() != "2024-01-30 16:35:00 +1000 AEST" {
+		t.Fatal("Data didn't deserialise properly", aemoData.Intervals[0].SettlementDate.String())
 	}
 }
 
@@ -80,7 +82,129 @@ func TestGetAEMOData(t *testing.T) {
 		t.Fatal("Data didn't deserialise properly")
 	}
 
-	if aemoData.Intervals[0].SettlementDate.String() != "2024-01-30 16:35:00 +0000 UTC" {
+	if aemoData.Intervals[0].SettlementDate.String() != "2024-01-30 16:35:00 +1000 AEST" {
 		t.Fatal("Data didn't deserialise properly")
 	}
+}
+
+func ValidateToot(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, expectedToot string, t *testing.T) {
+
+	if want, got := intervalRRP, gridBot.peakRRP; !FloatEquals(want, got) {
+		t.Errorf("Expected %f, got %f", want, got)
+	}
+
+	if want, got := intervalTime, gridBot.peakTime; !want.Equal(got) {
+		t.Errorf("Expected %s, got %s", want, got)
+	}
+
+	if want, got := intervalRRP, gridBot.lastTootedPeakRRP; !FloatEquals(want, got) {
+		t.Errorf("Expected %f, got %f", want, got)
+	}
+
+	if want, got := intervalTime, gridBot.lastTootedPeakTime; !want.Equal(got) {
+		t.Errorf("Expected %s, got %s", want, got)
+	}
+
+	if want, got := expectedToot, gridBot.lastToot; want != got {
+		t.Errorf("Expected %s, got %s", want, got)
+	}
+}
+
+func FeedForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, t *testing.T) {
+	interval := Interval{
+		SettlementDate:          JSONTime{intervalTime},
+		RegionID:                "QLD1",
+		Region:                  "QLD1",
+		RRP:                     intervalRRP,
+		TotalDemand:             0,
+		PeriodType:              "FORECAST",
+		NetInterchange:          0,
+		ScheduledGeneration:     0,
+		SemiScheduledGeneration: 0,
+	}
+
+	gridBot.GetIntervalChannel() <- interval
+}
+
+func FormatExpectedToot(intervalRRP float64, intervalTime time.Time, region string, peak bool) string {
+	if peak {
+		return fmt.Sprintf(PEAK_TOOT_FORMAT, "Queensland", intervalRRP/1000, intervalTime.Format("15:04"))
+	} else {
+		return fmt.Sprintf(PEAK_CANCELLED_TOOT_FORMAT, "Queensland", intervalRRP/1000, intervalTime.Format("15:04"))
+	}
+}
+
+func CommitIntervals(gridBot *GridBot, t *testing.T) {
+	close(gridBot.GetIntervalChannel())
+	done := make(chan bool)
+	go func() {
+		for {
+			if gridBot.lastToot != "" {
+				done <- true
+			}
+		}
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timed out waiting for gridBot to process interval")
+	case <-done:
+		break
+	}
+}
+
+func TestGidBotBasicInterval(t *testing.T) {
+	cfg := config{}
+	cfg.TestMode = true
+
+	gridBot := NewGridBot(cfg, "Queensland")
+	if want, got := "Queensland", gridBot.regionString; want != got {
+		t.Errorf("Expected %s, got %s", want, got)
+	}
+
+	go gridBot.Mainloop()
+
+	peakTime := time.Now().Add(1 * time.Hour)
+	peakRRP := float64(301)
+
+	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
+	CommitIntervals(gridBot, t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
+
+}
+func TestGidBotBasicPeak(t *testing.T) {
+	cfg := config{}
+	cfg.TestMode = true
+
+	gridBot := NewGridBot(cfg, "Queensland")
+	if want, got := "Queensland", gridBot.regionString; want != got {
+		t.Errorf("Expected %s, got %s", want, got)
+	}
+
+	go gridBot.Mainloop()
+
+	peakTime := time.Now().Add(2 * time.Hour)
+	peakRRP := float64(INTERESTING_PEAK_RRP * 3)
+
+	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
+	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	if want, got := 3, len(gridBot.intervalBuffer); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
+	CommitIntervals(gridBot, t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
+
+	oldPeak := peakRRP
+	// Cancel the peak
+	peakRRP = float64(INTERESTING_PEAK_RRP - 1)
+	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
+	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	if want, got := 3, len(gridBot.intervalBuffer); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
+	CommitIntervals(gridBot, t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(oldPeak, peakTime, "Queensland", false), t)
+
 }
