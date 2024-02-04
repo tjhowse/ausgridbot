@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const INTERESTING_PEAK_RRP = 300
+const INTERESTING_PEAK_RRP = 500
 
 // This amounts to 5 cents /kWh
 const UNINTERESTING_DELTA_RRP = 50
