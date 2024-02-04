@@ -100,10 +100,11 @@ func ValidateToot(gridBot *GridBot, intervalRRP float64, intervalTime time.Time,
 	if want, got := expectedToot, gridBot.lastToot; want != got {
 		t.Errorf("Expected %s, got %s", want, got)
 	}
+	gridBot.lastToot = ""
 }
 
-func FeedForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, t *testing.T) {
-	interval := Interval{
+func NewForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, t *testing.T) Interval {
+	return Interval{
 		SettlementDate:          JSONTime{intervalTime},
 		RegionID:                "QLD1",
 		Region:                  "QLD1",
@@ -114,16 +115,26 @@ func FeedForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime ti
 		ScheduledGeneration:     0,
 		SemiScheduledGeneration: 0,
 	}
-
-	gridBot.GetIntervalChannel() <- interval
 }
 
-func FormatExpectedToot(intervalRRP float64, intervalTime time.Time, region string, peak bool) string {
-	if peak {
+type peakType int
+
+const (
+	PEAK = iota
+	DOWNGRADE
+	CANCELLED
+)
+
+func FormatExpectedToot(intervalRRP float64, intervalTime time.Time, region string, oldPeakIntervalRRP float64, peak peakType) string {
+	switch peak {
+	case PEAK:
 		return fmt.Sprintf(PEAK_TOOT_FORMAT, "Queensland", intervalRRP/1000, intervalTime.Format("15:04"))
-	} else {
+	case DOWNGRADE:
+		return fmt.Sprintf(PEAK_DOWNGRADE_TOOT_FORMAT, "Queensland", oldPeakIntervalRRP/1000, intervalRRP/1000, intervalTime.Format("15:04"))
+	case CANCELLED:
 		return fmt.Sprintf(PEAK_CANCELLED_TOOT_FORMAT, "Queensland", intervalRRP/1000, intervalTime.Format("15:04"))
 	}
+	return ""
 }
 
 func CommitIntervals(gridBot *GridBot, t *testing.T) {
@@ -158,9 +169,15 @@ func TestGidBotBasicInterval(t *testing.T) {
 
 	peakTime := time.Now().Add(1 * time.Hour)
 	peakRRP := float64(301)
-	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
+	interval := NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- interval
+	// Throw in a cheeky actual interval to make sure it doesn't get tooted
+	interval.PeriodType = "ACTUAL"
+	interval.RRP = peakRRP * 2
+	interval.SettlementDate = JSONTime{time.Now().Add(2 * time.Hour)}
+	gridBot.GetIntervalChannel() <- interval
 	CommitIntervals(gridBot, t)
-	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", 0, PEAK), t)
 
 }
 func TestGidBotBasicPeak(t *testing.T) {
@@ -177,20 +194,35 @@ func TestGidBotBasicPeak(t *testing.T) {
 	peakTime := time.Now().Add(2 * time.Hour)
 	peakRRP := float64(INTERESTING_PEAK_RRP * 3)
 
-	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
-	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
-	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
 	CommitIntervals(gridBot, t)
-	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", true), t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", 0, PEAK), t)
 
-	gridBot.lastToot = ""
 	oldPeak := peakRRP
 	// Cancel the peak
 	peakRRP = float64(INTERESTING_PEAK_RRP - 1)
-	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
-	FeedForecastInterval(gridBot, peakRRP, peakTime, t)
-	FeedForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
 	CommitIntervals(gridBot, t)
-	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(oldPeak, peakTime, "Queensland", false), t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(oldPeak, peakTime, "Queensland", 0, CANCELLED), t)
+
+	// Restore the peak
+	peakRRP = float64(INTERESTING_PEAK_RRP * 3)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	CommitIntervals(gridBot, t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", 0, PEAK), t)
+
+	// Lower peak
+	peakRRP = float64(INTERESTING_PEAK_RRP * 2)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
+	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	CommitIntervals(gridBot, t)
+	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", oldPeak, DOWNGRADE), t)
 
 }

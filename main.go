@@ -14,8 +14,8 @@ type config struct {
 	MastodonClientSecret string `env:"MASTODON_CLIENT_SECRET"`
 	MastodonUserEmail    string `env:"MASTODON_USER_EMAIL"`
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
-	MastodonTootInterval int64  `env:"MASTODON_TOOT_INTERVAL" envDefault:"1"`
-	TestMode             bool   `env:"TEST_MODE" envDefault:"true"`
+	AEMOCheckInterval    int64  `env:"AEMO_CHECK_INTERVAL" envDefault:"30"`
+	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
 }
 
 func main() {
@@ -58,6 +58,6 @@ func main() {
 			close(gb.GetIntervalChannel())
 		}
 
-		time.Sleep(30 * time.Second)
+		time.Sleep(time.Duration(cfg.AEMOCheckInterval) * time.Second)
 	}
 }
