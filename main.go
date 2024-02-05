@@ -14,7 +14,7 @@ type config struct {
 	MastodonClientSecret string `env:"MASTODON_CLIENT_SECRET"`
 	MastodonUserEmail    string `env:"MASTODON_USER_EMAIL"`
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
-	AEMOCheckInterval    int64  `env:"AEMO_CHECK_INTERVAL" envDefault:"30"`
+	AEMOCheckInterval    int64  `env:"AEMO_CHECK_INTERVAL" envDefault:"1200"`
 	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
 }
 
@@ -44,7 +44,6 @@ func main() {
 			slog.Error("failed to get data from AEMO:", err)
 		}
 		slog.Info("Got data")
-		// print(aemoData.Intervals[0].RegionID)
 
 		for _, i := range aemoData.Intervals {
 			// Send the interval to the appropriate GridBot

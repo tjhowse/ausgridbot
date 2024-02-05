@@ -168,7 +168,7 @@ func TestGidBotBasicInterval(t *testing.T) {
 	go gridBot.Mainloop()
 
 	peakTime := time.Now().Add(1 * time.Hour)
-	peakRRP := float64(301)
+	peakRRP := float64(INTERESTING_PEAK_RRP+1)
 	interval := NewForecastInterval(gridBot, peakRRP, peakTime, t)
 	gridBot.GetIntervalChannel() <- interval
 	// Throw in a cheeky actual interval to make sure it doesn't get tooted

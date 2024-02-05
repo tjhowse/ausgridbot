@@ -51,7 +51,6 @@ func (gb *GridBot) resetIntervalChannel() {
 
 func (gb *GridBot) Mainloop() {
 	for {
-
 		for i := range gb.input {
 			gb.processInterval(i)
 			slog.Debug("Processed interval", "rrp", i.RRP, "time", i.SettlementDate.Time)
@@ -87,7 +86,6 @@ func (gb *GridBot) considerPostingToot() {
 			toot = fmt.Sprintf(PEAK_DOWNGRADE_TOOT_FORMAT, gb.regionString, gb.lastTootedPeakRRP/1000, gb.peakRRP/1000, gb.peakTime.Format("15:04"))
 		}
 	} else {
-		fmt.Println("Not tooting, too boring")
 		return
 	}
 
@@ -110,6 +108,7 @@ func (gb *GridBot) considerPostingToot() {
 		err = gb.m.PostStatus(toot)
 		if err != nil {
 			slog.Error("Failed to toot: " + err.Error())
+			gb.m = nil
 			return
 		}
 	}

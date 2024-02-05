@@ -34,4 +34,5 @@ To pause the app, run `flyctl scale count 0`. To resume, run `flyctl deploy`. Th
 | `MASTODON_CLIENT_SECRET` | The client secret of the mastodon app to use | Yes | `1234567890` | N/A |
 | `MASTODON_USER_EMAIL` | The email address of the mastodon account | Yes | `woo@you.com` | N/A |
 | `MASTODON_USER_PASSWORD` | The user password of the mastodon account | Yes | `1234567890` | N/A |
-| `MASTODON_TOOT_INTERVAL` | The number of seconds between posts on mastodon | No | `1800` | N/A |
+| `AEMO_CHECK_INTERVAL` | The number of seconds between checking the AEMO API for new forecast information | No | `1200` | `1200` |
+| `TEST_MODE` | If true, do not toot anything to mastodon, just log messages | No | `true` | `false` |
