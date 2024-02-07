@@ -41,6 +41,7 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 	}
 
 	if len(credentials) == 0 {
+		slog.Info("Falling back to old credential envars")
 		// Fall back to old operation
 		gbCfg := GridBotCfg{
 			RegionID:             "QLD1",
@@ -55,6 +56,7 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 			return nil, fmt.Errorf("failed to create GridBot: %s", err)
 		}
 	} else {
+		slog.Info("Using credentials from JSON envar.")
 		for _, c := range credentials {
 			c.TestMode = cfg.TestMode
 			c.MastodonURL = cfg.MastodonURL
@@ -110,6 +112,7 @@ func (gb *GridBot) resetIntervalChannel() {
 }
 
 func (gb *GridBot) Mainloop() {
+	slog.Info("Launching gridbot", "region", gb.regionString)
 	for {
 		for i := range gb.input {
 			gb.processInterval(i)
