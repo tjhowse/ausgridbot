@@ -35,12 +35,12 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 	gridBots := make(gridBotMap)
 
 	// Deserialise the credentials envar
-	var credentials GridBotCfgs
-	if err := json.Unmarshal([]byte(cfg.Credentials), &credentials); err != nil {
+	var credentials []GridBotCfg
+	if err := json.Unmarshal([]byte(cfg.GridBotCredentials), &credentials); err != nil {
 		slog.Error("Failed to deserialise credentials:", err)
 	}
 
-	if len(credentials.Credentials) == 0 {
+	if len(credentials) == 0 {
 		// Fall back to old operation
 		gbCfg := GridBotCfg{
 			RegionID:             "QLD1",
@@ -55,7 +55,7 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 			return nil, fmt.Errorf("failed to create GridBot: %s", err)
 		}
 	} else {
-		for _, c := range credentials.Credentials {
+		for _, c := range credentials {
 			c.TestMode = cfg.TestMode
 			c.MastodonURL = cfg.MastodonURL
 			if gridBots[c.RegionID], err = NewGridBot(c); err != nil {

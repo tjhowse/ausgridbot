@@ -183,7 +183,7 @@ func TestGridBotBasicPeak(t *testing.T) {
 
 func TestBuildBasicGridBot(t *testing.T) {
 	cfg := config{}
-	cfg.Credentials = `{"Credentials": [
+	cfg.GridBotCredentials = `[
 		{
 			"RegionID": "QLD1",
 			"MastodonClientID": "clientid",
@@ -191,7 +191,7 @@ func TestBuildBasicGridBot(t *testing.T) {
 			"MastodonUserEmail": "useremail",
 			"MastodonUserPassword": "userpassword"
 		}
-	]}`
+	]`
 	cfg.TestMode = true
 	cfg.MastodonURL = "https://mastodon.example.com"
 
@@ -212,7 +212,7 @@ func TestBuildBasicGridBot(t *testing.T) {
 
 func TestBuildBasicGridBots(t *testing.T) {
 	cfg := config{}
-	cfg.Credentials = `{"Credentials": [
+	cfg.GridBotCredentials = `[
 		{
 			"RegionID": "QLD1",
 			"MastodonClientID": "clientid",
@@ -227,7 +227,7 @@ func TestBuildBasicGridBots(t *testing.T) {
 			"MastodonUserEmail": "useremail",
 			"MastodonUserPassword": "userpassword"
 		}
-	]}`
+	]`
 	cfg.TestMode = true
 	cfg.MastodonURL = "https://mastodon.example.com"
 

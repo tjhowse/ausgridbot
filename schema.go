@@ -82,7 +82,3 @@ type GridBotCfg struct {
 	TestMode             bool
 	MastodonURL          string
 }
-
-type GridBotCfgs struct {
-	Credentials []GridBotCfg `json:"Credentials"`
-}
