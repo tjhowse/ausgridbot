@@ -16,7 +16,7 @@ type config struct {
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
 	AEMOCheckInterval    int64  `env:"AEMO_CHECK_INTERVAL" envDefault:"1200"`
 	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
-	GridBotCredentials   string `env:"GRID_BOTS" envDefault:""`
+	GridBotCredentials   string `env:"GRID_BOT_CREDENTIALS" envDefault:""`
 }
 
 type gridBotMap map[RegionID]*GridBot
