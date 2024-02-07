@@ -42,13 +42,20 @@ To pause the app, run `flyctl scale count 0`. To resume, run `flyctl deploy`. Th
 ### Example GridBot credentials json
 
 ```json
-    [
-        {
-            "RegionID": "QLD1",
-            "MastodonClientID": "clientid",
-            "MastodonClientSecret": "clientsecret",
-            "MastodonUserEmail": "useremail",
-            "MastodonUserPassword": "userpassword"
-        }
-    ]
+[
+    {
+        "RegionID": "QLD1",
+        "MastodonClientID": "clientid",
+        "MastodonClientSecret": "clientsecret",
+        "MastodonUserEmail": "useremail",
+        "MastodonUserPassword": "userpassword"
+    },
+    {
+        "RegionID": "NSW1",
+        "MastodonClientID": "clientid",
+        "MastodonClientSecret": "clientsecret",
+        "MastodonUserEmail": "useremail",
+        "MastodonUserPassword": "userpassword"
+    }
+]
 ```
