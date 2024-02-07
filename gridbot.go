@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -18,7 +19,7 @@ const PEAK_CANCELLED_TOOT_FORMAT = "The %s wholesale electricity price peak of $
 type GridBot struct {
 	m                  *Mastodon
 	input              chan Interval
-	cfg                config
+	cfg                GridBotCfg
 	regionString       string
 	lastTootedPeakRRP  float64
 	lastTootedPeakTime time.Time
@@ -28,16 +29,75 @@ type GridBot struct {
 	peakTime time.Time
 }
 
+func BuildGridBots(cfg config) (gridBotMap, error) {
+	var err error
+	// This is a map of RegionID to string
+	gridBots := make(gridBotMap)
+
+	// Deserialise the credentials envar
+	var credentials GridBotCfgs
+	if err := json.Unmarshal([]byte(cfg.Credentials), &credentials); err != nil {
+		slog.Error("Failed to deserialise credentials:", err)
+	}
+
+	if len(credentials.Credentials) == 0 {
+		// Fall back to old operation
+		gbCfg := GridBotCfg{
+			RegionID:             "QLD1",
+			MastodonClientID:     cfg.MastodonClientID,
+			MastodonClientSecret: cfg.MastodonClientSecret,
+			MastodonUserEmail:    cfg.MastodonUserEmail,
+			MastodonUserPassword: cfg.MastodonUserPassword,
+			TestMode:             cfg.TestMode,
+			MastodonURL:          cfg.MastodonURL,
+		}
+		if gridBots["QLD1"], err = NewGridBot(gbCfg); err != nil {
+			return nil, fmt.Errorf("failed to create GridBot: %s", err)
+		}
+	} else {
+		for _, c := range credentials.Credentials {
+			c.TestMode = cfg.TestMode
+			c.MastodonURL = cfg.MastodonURL
+			if gridBots[c.RegionID], err = NewGridBot(c); err != nil {
+				return nil, fmt.Errorf("failed to create GridBot: %s", err)
+			}
+		}
+	}
+
+	return gridBots, nil
+}
+
 func FloatEquals(a, b float64) bool {
 	return math.Abs(a-b) < 0.00000001
 }
 
-func NewGridBot(cfg config, regionString string) *GridBot {
+func RegionIDToRegionString(regionID RegionID) (string, error) {
+	switch regionID {
+	case "QLD1":
+		return "Queensland", nil
+	case "NSW1":
+		return "New South Wales", nil
+	case "SA1":
+		return "South Australia", nil
+	case "TAS1":
+		return "Tasmania", nil
+	case "VIC1":
+		return "Victoria", nil
+	default:
+		return "", fmt.Errorf("unknown region ID: %s", regionID)
+	}
+}
+
+func NewGridBot(cfg GridBotCfg) (*GridBot, error) {
 	gb := &GridBot{}
 	gb.cfg = cfg
-	gb.regionString = regionString
+	if s, err := RegionIDToRegionString(cfg.RegionID); err != nil {
+		return nil, fmt.Errorf("failed to convert region ID \"%s\" to string: %s", cfg.RegionID, err)
+	} else {
+		gb.regionString = s
+	}
 	gb.resetIntervalChannel()
-	return gb
+	return gb, nil
 }
 
 func (gb *GridBot) GetIntervalChannel() chan Interval {

@@ -13,6 +13,8 @@ type JSONTime struct {
 	time.Time
 }
 
+type RegionID string
+
 func (ct *JSONTime) UnmarshalJSON(b []byte) error {
 	// Unmarshall "2024-01-30T16:35:00" into a time.Time
 
@@ -37,7 +39,7 @@ func (ct *JSONTime) UnmarshalJSON(b []byte) error {
 
 type Interval struct {
 	SettlementDate          JSONTime `json:"SETTLEMENTDATE"`
-	RegionID                string   `json:"REGIONID"`
+	RegionID                RegionID `json:"REGIONID"`
 	Region                  string   `json:"REGION"`
 	RRP                     float64  `json:"RRP"`
 	TotalDemand             float64  `json:"TOTALDEMAND"`
@@ -63,9 +65,24 @@ func (i *Interval) Validate() error {
 		return fmt.Errorf("RegionID must be 'NSW1', 'QLD1', 'SA1', 'TAS1', or 'VIC1'")
 	}
 
-	if i.Region != i.RegionID {
+	if i.Region != string(i.RegionID) {
 		return fmt.Errorf("RegionID must match Region")
 	}
 
 	return nil
+}
+
+type GridBotCfg struct {
+	// Required fields.
+	RegionID             RegionID `json:"RegionID"`
+	MastodonClientID     string   `json:"MastodonClientID"`
+	MastodonClientSecret string   `json:"MastodonClientSecret"`
+	MastodonUserEmail    string   `json:"MastodonUserEmail"`
+	MastodonUserPassword string   `json:"MastodonUserPassword"`
+	TestMode             bool
+	MastodonURL          string
+}
+
+type GridBotCfgs struct {
+	Credentials []GridBotCfg `json:"Credentials"`
 }

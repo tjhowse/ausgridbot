@@ -16,9 +16,13 @@ type config struct {
 	MastodonUserPassword string `env:"MASTODON_USER_PASSWORD"`
 	AEMOCheckInterval    int64  `env:"AEMO_CHECK_INTERVAL" envDefault:"1200"`
 	TestMode             bool   `env:"TEST_MODE" envDefault:"false"`
+	Credentials          string `env:"GRID_BOTS" envDefault:""`
 }
 
+type gridBotMap map[RegionID]*GridBot
+
 func main() {
+	var err error
 	cfg := config{}
 	if err := env.Parse(&cfg); err != nil {
 		fmt.Printf("%+v\n", err)
@@ -26,10 +30,11 @@ func main() {
 
 	aemo := NewAEMO()
 
-	// This is a map of regions to the GridBot handling that region.
-	gridBots := make(map[string]*GridBot)
-
-	gridBots["QLD1"] = NewGridBot(cfg, "Queensland")
+	var gridBots gridBotMap
+	if gridBots, err = BuildGridBots(cfg); err != nil {
+		slog.Error("Failed to build GridBots:", err)
+		return
+	}
 
 	// Start the main loop for each GridBot
 	for _, gb := range gridBots {
