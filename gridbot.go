@@ -123,13 +123,13 @@ func (gb *GridBot) sendToot(toot string) error {
 	if gb.m == nil {
 		gb.m, err = NewMastodon(gb.cfg.MastodonURL, gb.cfg.MastodonClientID, gb.cfg.MastodonClientSecret)
 		if err != nil {
-			return fmt.Errorf("Failed to connect to mastodon: %s", err)
+			return fmt.Errorf("failed to connect to mastodon: %s", err)
 		}
 	}
 	err = gb.m.PostStatus(INTRO_TOOT)
 	if err != nil {
 		gb.m = nil
-		return fmt.Errorf("Failed to toot: %s", err)
+		return fmt.Errorf("failed to toot: %s", err)
 	}
 	return nil
 }
