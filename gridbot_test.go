@@ -20,6 +20,8 @@ func ValidateToot(gridBot *GridBot, intervalRRP float64, intervalTime time.Time,
 		t.Errorf("Expected %s, got %s", want, got)
 	}
 	gridBot.lastToot = ""
+
+	time.Sleep(1 * time.Second)
 }
 
 func NewForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, t *testing.T) Interval {
@@ -215,17 +217,17 @@ func TestBuildBasicGridBots(t *testing.T) {
 	cfg.GridBotCredentials = `[
 		{
 			"RegionID": "QLD1",
-			"MastodonClientID": "clientid",
-			"MastodonClientSecret": "clientsecret",
-			"MastodonUserEmail": "useremail",
-			"MastodonUserPassword": "userpassword"
+			"MastodonClientID": "qldclientid",
+			"MastodonClientSecret": "qldclientsecret",
+			"MastodonUserEmail": "qlduseremail",
+			"MastodonUserPassword": "qlduserpassword"
 		},
 		{
 			"RegionID": "NSW1",
-			"MastodonClientID": "clientid",
-			"MastodonClientSecret": "clientsecret",
-			"MastodonUserEmail": "useremail",
-			"MastodonUserPassword": "userpassword"
+			"MastodonClientID": "nswclientid",
+			"MastodonClientSecret": "nswclientsecret",
+			"MastodonUserEmail": "nswuseremail",
+			"MastodonUserPassword": "nswuserpassword"
 		}
 	]`
 	cfg.TestMode = true
@@ -240,14 +242,41 @@ func TestBuildBasicGridBots(t *testing.T) {
 		if want, got := "Queensland", gridBots["QLD1"].regionString; want != got {
 			t.Fatal("Expected regionString to be ", want, "got", got)
 		}
+		if want, got := "qldclientid", gridBots["QLD1"].cfg.MastodonClientID; want != got {
+			t.Fatal("Expected MastodonClientID to be ", want, "got", got)
+		}
+		if want, got := "qldclientsecret", gridBots["QLD1"].cfg.MastodonClientSecret; want != got {
+			t.Fatal("Expected MastodonClientSecret to be ", want, "got", got)
+		}
+		if want, got := "qlduseremail", gridBots["QLD1"].cfg.MastodonUserEmail; want != got {
+			t.Fatal("Expected MastodonUserEmail to be ", want, "got", got)
+		}
+		if want, got := "qlduserpassword", gridBots["QLD1"].cfg.MastodonUserPassword; want != got {
+			t.Fatal("Expected MastodonUserPassword to be ", want, "got", got)
+		}
+
 		if !gridBots["QLD1"].cfg.TestMode {
 			t.Fatal("Expected TestMode to be true, got", gridBots["QLD1"].cfg.TestMode)
 		}
+
 		if want, got := "New South Wales", gridBots["NSW1"].regionString; want != got {
 			t.Fatal("Expected regionString to be ", want, "got", got)
 		}
-		if !gridBots["NSW1"].cfg.TestMode {
-			t.Fatal("Expected TestMode to be true, got", gridBots["QLD1"].cfg.TestMode)
+		if want, got := "nswclientid", gridBots["NSW1"].cfg.MastodonClientID; want != got {
+			t.Fatal("Expected MastodonClientID to be ", want, "got", got)
 		}
+		if want, got := "nswclientsecret", gridBots["NSW1"].cfg.MastodonClientSecret; want != got {
+			t.Fatal("Expected MastodonClientSecret to be ", want, "got", got)
+		}
+		if want, got := "nswuseremail", gridBots["NSW1"].cfg.MastodonUserEmail; want != got {
+			t.Fatal("Expected MastodonUserEmail to be ", want, "got", got)
+		}
+		if want, got := "nswuserpassword", gridBots["NSW1"].cfg.MastodonUserPassword; want != got {
+			t.Fatal("Expected MastodonUserPassword to be ", want, "got", got)
+		}
+		if !gridBots["NSW1"].cfg.TestMode {
+			t.Fatal("Expected TestMode to be true, got", gridBots["NSW1"].cfg.TestMode)
+		}
+
 	}
 }

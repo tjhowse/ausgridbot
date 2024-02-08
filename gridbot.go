@@ -61,9 +61,16 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 	} else {
 		slog.Info("Using credentials from JSON envar.")
 		for _, c := range credentials {
-			c.TestMode = cfg.TestMode
-			c.MastodonURL = cfg.MastodonURL
-			if gridBots[c.RegionID], err = NewGridBot(c); err != nil {
+			newCFG := GridBotCfg{
+				RegionID:             c.RegionID,
+				MastodonClientID:     c.MastodonClientID,
+				MastodonClientSecret: c.MastodonClientSecret,
+				MastodonUserEmail:    c.MastodonUserEmail,
+				MastodonUserPassword: c.MastodonUserPassword,
+				TestMode:             cfg.TestMode,
+				MastodonURL:          cfg.MastodonURL,
+			}
+			if gridBots[c.RegionID], err = NewGridBot(newCFG); err != nil {
 				return nil, fmt.Errorf("failed to create GridBot: %s", err)
 			}
 		}
@@ -110,7 +117,7 @@ func (gb *GridBot) GetIntervalChannel() chan Interval {
 	return gb.input
 }
 func (gb *GridBot) SendTestToot() {
-	if !gb.cfg.TestMode && !gb.testTootSent {
+	if !gb.testTootSent {
 		if err := gb.sendToot(INTRO_TOOT); err != nil {
 			slog.Error("Failed to send test toot:", err)
 		}
@@ -119,6 +126,10 @@ func (gb *GridBot) SendTestToot() {
 }
 
 func (gb *GridBot) sendToot(toot string) error {
+	if gb.cfg.TestMode {
+		slog.Info("Would toot", "toot", toot)
+		return nil
+	}
 	var err error
 	if gb.m == nil {
 		gb.m, err = NewMastodon(gb.cfg.MastodonURL, gb.cfg.MastodonClientID, gb.cfg.MastodonClientSecret)
@@ -131,6 +142,8 @@ func (gb *GridBot) sendToot(toot string) error {
 		gb.m = nil
 		return fmt.Errorf("failed to toot: %s", err)
 	}
+
+	slog.Info("Tooted", "toot", toot)
 	return nil
 }
 
@@ -186,10 +199,8 @@ func (gb *GridBot) considerPostingToot() {
 	gb.lastToot = toot
 
 	// Toot it
-	if !gb.cfg.TestMode {
-		if err := gb.sendToot(toot); err != nil {
-			slog.Error("Failed to send toot:", err)
-		}
+	if err := gb.sendToot(toot); err != nil {
+		slog.Error("Failed to send toot:", err)
 	}
 }
 
