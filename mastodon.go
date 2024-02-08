@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"io"
-	"os"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -12,14 +11,14 @@ type Mastodon struct {
 	c *mastodon.Client
 }
 
-func NewMastodon(server, id, secret string) (*Mastodon, error) {
+func NewMastodon(server, id, secret, userEmail, userPassword string) (*Mastodon, error) {
 	m := &Mastodon{}
 	m.c = mastodon.NewClient(&mastodon.Config{
 		Server:       server,
 		ClientID:     id,
 		ClientSecret: secret,
 	})
-	err := m.c.Authenticate(context.Background(), os.Getenv("MASTODON_USER_EMAIL"), os.Getenv("MASTODON_USER_PASSWORD"))
+	err := m.c.Authenticate(context.Background(), userEmail, userPassword)
 	if err != nil {
 		return nil, err
 	}
