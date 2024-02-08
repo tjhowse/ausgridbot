@@ -16,6 +16,8 @@ const PEAK_TOOT_FORMAT = "A new %s wholesale electricity price peak of $%.2f/kWh
 const PEAK_DOWNGRADE_TOOT_FORMAT = "The %s predicted wholesale electricity price peak of $%.2f/kWh has been downgraded to a peak of $%.2f/kWh at %s: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 const PEAK_CANCELLED_TOOT_FORMAT = "The %s wholesale electricity price peak of $%.2f/kWh at %s has been averted. Thanks AEMO! https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 
+const INTRO_TOOT = "Testing, testing, 1, 2, 3. This is a test toot from the gridbot. If you see this, it's working."
+
 type GridBot struct {
 	m                  *Mastodon
 	input              chan Interval
@@ -24,6 +26,7 @@ type GridBot struct {
 	lastTootedPeakRRP  float64
 	lastTootedPeakTime time.Time
 	lastToot           string
+	testTootSent       bool
 
 	peakRRP  float64
 	peakTime time.Time
@@ -99,11 +102,36 @@ func NewGridBot(cfg GridBotCfg) (*GridBot, error) {
 		gb.regionString = s
 	}
 	gb.resetIntervalChannel()
+	gb.SendTestToot()
 	return gb, nil
 }
 
 func (gb *GridBot) GetIntervalChannel() chan Interval {
 	return gb.input
+}
+func (gb *GridBot) SendTestToot() {
+	if !gb.cfg.TestMode && !gb.testTootSent {
+		if err := gb.sendToot(INTRO_TOOT); err != nil {
+			slog.Error("Failed to send test toot:", err)
+		}
+		gb.testTootSent = true
+	}
+}
+
+func (gb *GridBot) sendToot(toot string) error {
+	var err error
+	if gb.m == nil {
+		gb.m, err = NewMastodon(gb.cfg.MastodonURL, gb.cfg.MastodonClientID, gb.cfg.MastodonClientSecret)
+		if err != nil {
+			return fmt.Errorf("Failed to connect to mastodon: %s", err)
+		}
+	}
+	err = gb.m.PostStatus(INTRO_TOOT)
+	if err != nil {
+		gb.m = nil
+		return fmt.Errorf("Failed to toot: %s", err)
+	}
+	return nil
 }
 
 func (gb *GridBot) resetIntervalChannel() {
@@ -124,7 +152,6 @@ func (gb *GridBot) Mainloop() {
 }
 
 func (gb *GridBot) considerPostingToot() {
-	var err error
 
 	// We've already tooted about this peak.
 	if FloatEquals(gb.lastTootedPeakRRP, gb.peakRRP) && gb.lastTootedPeakTime.Equal(gb.peakTime) {
@@ -160,19 +187,8 @@ func (gb *GridBot) considerPostingToot() {
 
 	// Toot it
 	if !gb.cfg.TestMode {
-		if gb.m == nil {
-			gb.m, err = NewMastodon(gb.cfg.MastodonURL, gb.cfg.MastodonClientID, gb.cfg.MastodonClientSecret)
-			if err != nil {
-				slog.Error("Failed to connect to mastodon: " + err.Error())
-				return
-			}
-		}
-
-		err = gb.m.PostStatus(toot)
-		if err != nil {
-			slog.Error("Failed to toot: " + err.Error())
-			gb.m = nil
-			return
+		if err := gb.sendToot(toot); err != nil {
+			slog.Error("Failed to send toot:", err)
 		}
 	}
 }
