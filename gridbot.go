@@ -16,7 +16,7 @@ const PEAK_TOOT_FORMAT = "A new %s wholesale electricity price peak of $%.2f/kWh
 const PEAK_DOWNGRADE_TOOT_FORMAT = "The %s predicted wholesale electricity price peak of $%.2f/kWh has been downgraded to a peak of $%.2f/kWh at %s: https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 const PEAK_CANCELLED_TOOT_FORMAT = "The %s wholesale electricity price peak of $%.2f/kWh at %s has been averted. Thanks AEMO! https://aemo.com.au/aemo/apps/visualisations/elec-nem-priceanddemand.html"
 
-const INTRO_TOOT = "Testing, testing, 1, 2, 3. This is a test toot from the gridbot. If you see this, it's working."
+const INTRO_TOOT = "Testing, testing, 1, 2, 3. This is a test toot from the %s gridbot. If you see this, it's working."
 
 type GridBot struct {
 	m                  *Mastodon
@@ -118,7 +118,7 @@ func (gb *GridBot) GetIntervalChannel() chan Interval {
 }
 func (gb *GridBot) SendTestToot() {
 	if !gb.testTootSent {
-		if err := gb.sendToot(INTRO_TOOT); err != nil {
+		if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString)); err != nil {
 			slog.Error("Failed to send test toot:", err)
 		}
 		gb.testTootSent = true
@@ -137,7 +137,7 @@ func (gb *GridBot) sendToot(toot string) error {
 			return fmt.Errorf("failed to connect to mastodon: %s", err)
 		}
 	}
-	err = gb.m.PostStatus(INTRO_TOOT)
+	err = gb.m.PostStatus(toot)
 	if err != nil {
 		gb.m = nil
 		return fmt.Errorf("failed to toot: %s", err)

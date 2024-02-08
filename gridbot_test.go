@@ -21,7 +21,7 @@ func ValidateToot(gridBot *GridBot, intervalRRP float64, intervalTime time.Time,
 	}
 	gridBot.lastToot = ""
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func NewForecastInterval(gridBot *GridBot, intervalRRP float64, intervalTime time.Time, t *testing.T) Interval {
