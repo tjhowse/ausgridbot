@@ -26,7 +26,6 @@ type GridBot struct {
 	lastTootedPeakRRP  float64
 	lastTootedPeakTime time.Time
 	lastToot           string
-	testTootSent       bool
 
 	peakRRP  float64
 	peakTime time.Time
@@ -109,7 +108,7 @@ func NewGridBot(cfg GridBotCfg) (*GridBot, error) {
 		gb.regionString = s
 	}
 	gb.resetIntervalChannel()
-	gb.SendTestToot()
+	// gb.SendTestToot()
 	return gb, nil
 }
 
@@ -117,11 +116,8 @@ func (gb *GridBot) GetIntervalChannel() chan Interval {
 	return gb.input
 }
 func (gb *GridBot) SendTestToot() {
-	if !gb.testTootSent {
-		if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString)); err != nil {
-			slog.Error("Failed to send test toot:", err)
-		}
-		gb.testTootSent = true
+	if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString)); err != nil {
+		slog.Error("Failed to send test toot:", err)
 	}
 }
 
