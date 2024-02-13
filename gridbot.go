@@ -138,6 +138,7 @@ func (gb *GridBot) sendToot(toot string) error {
 		}
 	}
 	err = gb.m.PostStatus(toot)
+	// Hmm, not crazy about this. Tends to eat errors about tooting without telling anyone.
 	if err != nil {
 		gb.m = nil
 		return fmt.Errorf("failed to toot: %s", err)
@@ -145,6 +146,12 @@ func (gb *GridBot) sendToot(toot string) error {
 
 	slog.Info("Tooted", "toot", toot)
 	return nil
+}
+
+// This is a goroutine that listens for toots from me (@tj@howse.social) and
+// sends out a toot with the same contents as the toot it received.
+func (gb *GridBot) ListenForToots() {
+
 }
 
 func (gb *GridBot) resetIntervalChannel() {
@@ -165,7 +172,6 @@ func (gb *GridBot) Mainloop() {
 }
 
 func (gb *GridBot) considerPostingToot() {
-
 	// We've already tooted about this peak.
 	if FloatEquals(gb.lastTootedPeakRRP, gb.peakRRP) && gb.lastTootedPeakTime.Equal(gb.peakTime) {
 		return
@@ -177,15 +183,17 @@ func (gb *GridBot) considerPostingToot() {
 	}
 
 	var toot string
-
 	if gb.peakRRP < INTERESTING_PEAK_RRP && gb.lastTootedPeakRRP > INTERESTING_PEAK_RRP {
 		// If the new peak is below INTERESTING_PEAK_RRP but the previous peak was above, publish a
 		// retraction saying the peak was cancelled.
 		toot = fmt.Sprintf(PEAK_CANCELLED_TOOT_FORMAT, gb.regionString, gb.lastTootedPeakRRP/1000, gb.lastTootedPeakTime.Format("15:04"))
 	} else if gb.peakRRP > INTERESTING_PEAK_RRP {
+		// If the peak is interesting...
 		if gb.peakRRP > gb.lastTootedPeakRRP {
+			// If it's bigger than the last peak, toot about it.
 			toot = fmt.Sprintf(PEAK_TOOT_FORMAT, gb.regionString, gb.peakRRP/1000, gb.peakTime.Format("15:04"))
 		} else {
+			// If it's smaller than the last peak, toot about the downgrade.
 			toot = fmt.Sprintf(PEAK_DOWNGRADE_TOOT_FORMAT, gb.regionString, gb.lastTootedPeakRRP/1000, gb.peakRRP/1000, gb.peakTime.Format("15:04"))
 		}
 	} else {

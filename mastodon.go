@@ -33,6 +33,24 @@ func (m *Mastodon) PostStatus(status string) error {
 	return err
 }
 
+func (m *Mastodon) GetRecentDMs() ([]string, error) {
+	// var err error
+	results := []string{}
+	// var conv []*mastodon.Conversation
+	// if conv, err = m.c.GetConversations(context.Background(), &mastodon.Pagination{}); err != nil {
+	// 	return nil, err
+	// }
+
+	// for _, c := range conv {
+	// 	if c. != "@tj@howse.social" {
+	// 		continue
+	// 	}
+	// 	var msgs []*mastodon.Status
+
+	// }
+	return results, nil
+}
+
 // Gets my last `n` statuses
 func (m *Mastodon) GetMyStatuses(n int64) ([]*mastodon.Status, error) {
 	if account, err := m.c.GetAccountCurrentUser(context.Background()); err != nil {
