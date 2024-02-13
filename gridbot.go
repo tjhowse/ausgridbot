@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"time"
@@ -27,8 +29,10 @@ type GridBot struct {
 	lastTootedPeakTime time.Time
 	lastToot           string
 
-	peakRRP  float64
-	peakTime time.Time
+	forecasts      []Interval // This stores some forecast data for graphing.
+	forecastsStale bool       // When true a newly received interval will clear forecasts.
+	peakRRP        float64
+	peakTime       time.Time
 }
 
 func BuildGridBots(cfg config) (gridBotMap, error) {
@@ -115,13 +119,14 @@ func NewGridBot(cfg GridBotCfg) (*GridBot, error) {
 func (gb *GridBot) GetIntervalChannel() chan Interval {
 	return gb.input
 }
+
 func (gb *GridBot) SendTestToot() {
-	if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString)); err != nil {
+	if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString), nil); err != nil {
 		slog.Error("Failed to send test toot:", err)
 	}
 }
 
-func (gb *GridBot) sendToot(toot string) error {
+func (gb *GridBot) sendToot(toot string, reader io.Reader) error {
 	if gb.cfg.TestMode {
 		slog.Info("Would toot", "toot", toot)
 		return nil
@@ -137,8 +142,11 @@ func (gb *GridBot) sendToot(toot string) error {
 			return fmt.Errorf("failed to connect to mastodon: %s", err)
 		}
 	}
-	err = gb.m.PostStatus(toot)
-	// Hmm, not crazy about this. Tends to eat errors about tooting without telling anyone.
+	if reader == nil {
+		err = gb.m.PostStatus(toot)
+	} else {
+		err = gb.m.PostStatusWithImageFromReader(toot, reader, "public")
+	}
 	if err != nil {
 		gb.m = nil
 		return fmt.Errorf("failed to toot: %s", err)
@@ -157,6 +165,7 @@ func (gb *GridBot) ListenForToots() {
 func (gb *GridBot) resetIntervalChannel() {
 	gb.input = make(chan Interval)
 	gb.peakRRP = -20000
+	gb.forecastsStale = true
 }
 
 func (gb *GridBot) Mainloop() {
@@ -169,6 +178,18 @@ func (gb *GridBot) Mainloop() {
 		gb.considerPostingToot()
 		gb.resetIntervalChannel()
 	}
+}
+
+func (gb *GridBot) generatePlot(writer io.Writer) {
+	labels := make([]time.Time, 0)
+	values := make([]float64, 0)
+
+	for _, i := range gb.forecasts {
+		labels = append(labels, i.SettlementDate.Time)
+		values = append(values, i.RRP)
+	}
+
+	GetPlot(labels, values, writer)
 }
 
 func (gb *GridBot) considerPostingToot() {
@@ -200,6 +221,9 @@ func (gb *GridBot) considerPostingToot() {
 		return
 	}
 
+	buffer := new(bytes.Buffer)
+	gb.generatePlot(buffer)
+
 	slog.Info("Toot!", "toot", toot)
 
 	gb.lastTootedPeakRRP = gb.peakRRP
@@ -207,12 +231,17 @@ func (gb *GridBot) considerPostingToot() {
 	gb.lastToot = toot
 
 	// Toot it
-	if err := gb.sendToot(toot); err != nil {
+	if err := gb.sendToot(toot, buffer); err != nil {
 		slog.Error("Failed to send toot:", err)
 	}
 }
 
 func (gb *GridBot) processInterval(i Interval) {
+	// Ignore data that's not for my region
+	if i.RegionID != gb.cfg.RegionID {
+		return
+	}
+
 	// Ignore data that isn't a forecast
 	if i.PeriodType != "FORECAST" {
 		return
@@ -221,6 +250,13 @@ func (gb *GridBot) processInterval(i Interval) {
 	if i.SettlementDate.Time.After(time.Now().Add(8 * time.Hour)) {
 		return
 	}
+
+	if gb.forecastsStale {
+		gb.forecasts = make([]Interval, 0)
+		gb.forecastsStale = false
+	}
+
+	gb.forecasts = append(gb.forecasts, i)
 
 	if i.RRP > gb.peakRRP {
 		gb.peakRRP = i.RRP

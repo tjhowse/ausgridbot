@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
@@ -113,9 +115,21 @@ func TestGridBotBasicInterval(t *testing.T) {
 	interval.RRP = peakRRP * 2
 	interval.SettlementDate = JSONTime{time.Now().Add(2 * time.Hour)}
 	gridBot.GetIntervalChannel() <- interval
+
+	if want, got := 1, len(gridBot.forecasts); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
+	if gridBot.forecastsStale {
+		t.Errorf("Expected forecastsStale to be false, got true")
+	}
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", 0, PEAK), t)
-
+	if want, got := 1, len(gridBot.forecasts); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
+	if !gridBot.forecastsStale {
+		t.Errorf("Expected forecastsStale to be true, got false")
+	}
 }
 func TestGridBotBasicPeak(t *testing.T) {
 	cfg := GridBotCfg{}
@@ -140,8 +154,17 @@ func TestGridBotBasicPeak(t *testing.T) {
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	if want, got := 3, len(gridBot.forecasts); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
+	if gridBot.forecastsStale {
+		t.Errorf("Expected forecastsStale to be false, got true")
+	}
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(peakRRP, peakTime, "Queensland", 0, PEAK), t)
+	if !gridBot.forecastsStale {
+		t.Errorf("Expected forecastsStale to be true, got false")
+	}
 
 	oldPeak := peakRRP
 	// Cancel the peak
@@ -149,8 +172,14 @@ func TestGridBotBasicPeak(t *testing.T) {
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(-1*time.Hour), t)
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP, peakTime, t)
 	gridBot.GetIntervalChannel() <- NewForecastInterval(gridBot, peakRRP/2, peakTime.Add(1*time.Hour), t)
+	if gridBot.forecastsStale {
+		t.Errorf("Expected forecastsStale to be false, got true")
+	}
 	CommitIntervals(gridBot, t)
 	ValidateToot(gridBot, peakRRP, peakTime, FormatExpectedToot(oldPeak, peakTime, "Queensland", 0, CANCELLED), t)
+	if want, got := 3, len(gridBot.forecasts); want != got {
+		t.Errorf("Expected %d, got %d", want, got)
+	}
 
 	// Restore the peak
 	peakRRP = float64(INTERESTING_PEAK_RRP * 3)
@@ -279,4 +308,63 @@ func TestBuildBasicGridBots(t *testing.T) {
 		}
 
 	}
+}
+
+func TestPlotting(t *testing.T) {
+	var err error
+	f, err := os.Open("data/exampledata.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	var aemoData AEMOData
+	err = json.NewDecoder(f).Decode(&aemoData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Find the last non-forecast time in the intervals.
+	var startTime time.Time
+	for _, interval := range aemoData.Intervals {
+		if interval.RegionID != "QLD1" {
+			continue
+		}
+		if interval.PeriodType == "FORECAST" {
+			break
+		}
+		startTime = interval.SettlementDate.Time
+	}
+
+	// Round offsetFromNowToDataStartTime to the nearest half-hour
+	offsetFromNowToDataStartTime := time.Since(startTime).Round(30 * time.Minute)
+
+	// Re-timebase the example data such that the start time is now
+	for i := range aemoData.Intervals {
+		aemoData.Intervals[i].SettlementDate.Time = aemoData.Intervals[i].SettlementDate.Time.Add(offsetFromNowToDataStartTime)
+	}
+
+	cfg := GridBotCfg{}
+	cfg.TestMode = true
+	cfg.RegionID = "QLD1"
+
+	var gridBot *GridBot
+
+	if gridBot, err = NewGridBot(cfg); err != nil {
+		t.Fatal(err)
+	}
+	go gridBot.Mainloop()
+
+	for _, d := range aemoData.Intervals {
+		gridBot.GetIntervalChannel() <- d
+	}
+	close(gridBot.GetIntervalChannel())
+
+	file, err := os.Create("test2.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	gridBot.generatePlot(file)
 }
