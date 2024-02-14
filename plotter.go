@@ -11,13 +11,16 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
+const plot_aspect_x, plot_aspect_y = 16, 9
+const plot_scalar = 0.4
+
 func GetPlot(xAxisLabels []time.Time, data []float64, w io.Writer) error {
 	// create a new line instance
 	p := plot.New()
 
 	p.Title.Text = "Energy price forecast"
 	p.X.Label.Text = "Time"
-	p.Y.Label.Text = "Price ($/MWh)"
+	p.Y.Label.Text = "Price ($/kWh)"
 	grid := plotter.NewGrid()
 	p.Add(grid)
 
@@ -28,7 +31,7 @@ func GetPlot(xAxisLabels []time.Time, data []float64, w io.Writer) error {
 		// add the data to the plot
 		_, tzOffset := xAxisLabels[i].Zone()
 		items[i].X = float64(xAxisLabels[i].Unix() + int64(tzOffset))
-		items[i].Y = data[i]
+		items[i].Y = data[i] / 1000
 	}
 
 	if line, err := plotter.NewLine(items); err != nil {
@@ -39,16 +42,10 @@ func GetPlot(xAxisLabels []time.Time, data []float64, w io.Writer) error {
 		p.Add(line)
 	}
 
-	// if err := plotutil.AddLinePoints(p, items); err != nil {
-	// 	return err
-	// }
-	// p.NominalX(xAxisLabels...)
 	p.X.Tick.Marker = plot.TimeTicks{Format: "15:04", Ticker: myTicker{TickCount: len(xAxisLabels)}}
-	// p.X.Tick.Marker = plot.TimeTicks{Format: "15:04"}
+	// p.Y.Tick.Marker = plot.ConstantTicks{}
 
-	// Remove the circles gylphs from the plot
-
-	if wt, err := p.WriterTo(7*vg.Inch, 3*vg.Inch, "png"); err != nil {
+	if wt, err := p.WriterTo(plot_scalar*plot_aspect_x*vg.Inch, plot_scalar*plot_aspect_y*vg.Inch, "png"); err != nil {
 		return err
 	} else {
 		wt.WriteTo(w)

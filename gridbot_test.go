@@ -368,3 +368,71 @@ func TestPlotting(t *testing.T) {
 
 	gridBot.generatePlot(file)
 }
+
+func TestPostPlot(t *testing.T) {
+	// This posts an actual post to @testgridbot@howse.social every time it runs
+	t.Skip("Skipping actual posts to mastodon.")
+	var err error
+	f, err := os.Open("data/exampledata.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	var aemoData AEMOData
+	err = json.NewDecoder(f).Decode(&aemoData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Find the last non-forecast time in the intervals.
+	var startTime time.Time
+	for _, interval := range aemoData.Intervals {
+		if interval.RegionID != "QLD1" {
+			continue
+		}
+		if interval.PeriodType == "FORECAST" {
+			break
+		}
+		startTime = interval.SettlementDate.Time
+	}
+
+	// Round offsetFromNowToDataStartTime to the nearest half-hour
+	offsetFromNowToDataStartTime := time.Since(startTime).Round(30 * time.Minute)
+
+	// Re-timebase the example data such that the start time is now
+	for i := range aemoData.Intervals {
+		aemoData.Intervals[i].SettlementDate.Time = aemoData.Intervals[i].SettlementDate.Time.Add(offsetFromNowToDataStartTime)
+	}
+
+	// Load test_credentials.secret.json
+	var creds []GridBotCfg
+	f, err = os.Open("test_credentials.secret.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	err = json.NewDecoder(f).Decode(&creds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := creds[0]
+
+	cfg.TestMode = false
+	cfg.MastodonURL = "https://howse.social"
+	var gridBot *GridBot
+	if gridBot, err = NewGridBot(cfg); err != nil {
+		t.Fatal(err)
+	}
+	go gridBot.Mainloop()
+
+	for _, d := range aemoData.Intervals {
+		gridBot.GetIntervalChannel() <- d
+	}
+	close(gridBot.GetIntervalChannel())
+
+	// Give gridbot time to post before exiting.
+	time.Sleep(5 * time.Second)
+
+}
