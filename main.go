@@ -46,9 +46,10 @@ func main() {
 		slog.Info("Getting data")
 		aemoData, err := aemo.GetAEMOData("")
 		if err != nil {
-			slog.Error("failed to get data from AEMO:", err)
+			slog.Error("failed to get data from AEMO:", "err", err)
+		} else {
+			slog.Info("Got data")
 		}
-		slog.Info("Got data")
 
 		for _, i := range aemoData.Intervals {
 			// Send the interval to the appropriate GridBot
