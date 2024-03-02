@@ -1,9 +1,14 @@
 # AusGridBot
 
 This is a bot that reads electricity pricing information from AEMO's API
-and posts interesting things to Mastodon. Currently it only posts updates
-to the pricing in Queensland, but it could be expanded to other states if
-there's interest.
+and posts interesting things to Mastodon. There is one per Australian state
+participating in the National Energy Market:
+
+* https://howse.social/@nswgridbot
+* https://howse.social/@vicgridbot
+* https://howse.social/@tasgridbot
+* https://howse.social/@sagridbot
+* https://howse.social/@qldgridbot
 
 ## Hosting
 
