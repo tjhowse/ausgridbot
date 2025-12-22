@@ -7,8 +7,8 @@ app = 'ausgridbot'
 primary_region = 'syd'
 
 [build]
-  builder = 'paketobuildpacks/builder:base'
-  buildpacks = ['gcr.io/paketo-buildpacks/go']
+  [build.args]
+    GO_VERSION = '1.25.5'
 
 [env]
   MASTODON_SERVER = 'https://howse.social'

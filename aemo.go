@@ -14,7 +14,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const AEMO_HOST = "https://aemo.com.au"
+const AEMO_HOST = "https://visualisations.aemo.com.au"
 const AEMO_URL = "/aemo/apps/api/report/5MIN"
 
 // It would probably be overkill to make this an actual structure...

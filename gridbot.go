@@ -43,7 +43,7 @@ func BuildGridBots(cfg config) (gridBotMap, error) {
 	// Deserialise the credentials envar
 	var credentials []GridBotCfg
 	if err := json.Unmarshal([]byte(cfg.GridBotCredentials), &credentials); err != nil {
-		slog.Error("Failed to deserialise credentials:", err)
+		slog.Any("Failed to deserialise credentials:", err)
 	}
 
 	if len(credentials) == 0 {
@@ -122,7 +122,7 @@ func (gb *GridBot) GetIntervalChannel() chan Interval {
 
 func (gb *GridBot) SendTestToot() {
 	if err := gb.sendToot(fmt.Sprintf(INTRO_TOOT, gb.regionString), nil); err != nil {
-		slog.Error("Failed to send test toot:", err)
+		slog.Any("Failed to send test toot:", err)
 	}
 }
 
@@ -232,7 +232,7 @@ func (gb *GridBot) considerPostingToot() {
 
 	// Toot it
 	if err := gb.sendToot(toot, buffer); err != nil {
-		slog.Error("Failed to send toot:", err)
+		slog.Any("Failed to send toot:", err)
 	}
 }
 

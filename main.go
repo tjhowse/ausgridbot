@@ -32,7 +32,7 @@ func main() {
 
 	var gridBots gridBotMap
 	if gridBots, err = BuildGridBots(cfg); err != nil {
-		slog.Error("Failed to build GridBots:", err)
+		slog.Any("Failed to build GridBots:", err)
 		return
 	}
 
